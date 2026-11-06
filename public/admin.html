@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#070707">
+  <title>파이트 픽 · 운영자</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin: 16px 0; }
+    .card h3 { margin: 0 0 14px; font-family: var(--display); font-size: 22px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .row-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+    .group { border-top: 1px solid #222; padding-top: 14px; margin-top: 14px; }
+    .group h4 { margin: 0 0 10px; font-size: 14px; color: #ffb3ad; letter-spacing: 1px; }
+    .media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .slot { background: #0b0b0b; border: 1px dashed #333; border-radius: 10px; padding: 10px; display: grid; gap: 8px; font-size: 13px; }
+    .slot .pv { aspect-ratio: 3/4; background: #151515; border-radius: 8px; overflow: hidden; display: grid; place-items: center; color: #555; }
+    .slot .pv img, .slot .pv video { width: 100%; height: 100%; object-fit: cover; }
+    .slot input[type=file] { font-size: 12px; color: #aaa; width: 100%; }
+    .slot .prog { height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
+    .slot .prog i { display: block; height: 100%; width: 0; background: var(--red); }
+    .stat { font-size: 14px; color: #ccc; line-height: 1.8; }
+    .stat b { color: #fff; }
+    .admin-timer { font-family: var(--display); font-size: 54px; font-variant-numeric: tabular-nums; }
+    .btn.gold { background: #ffd166; color: #111; }
+    .btn.white { background: #ececec; color: #111; }
+    details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+    @media (max-width: 560px) { .grid2, .grid3 { grid-template-columns: 1fr; } .admin-timer { font-size: 44px; } }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="/admin">🥊 FIGHT <b>PICK</b> · 운영자</a>
+      <div class="row-btns" style="margin:0">
+        <a class="btn ghost sm" href="/" target="_blank">메인 보기</a>
+        <a class="btn ghost sm" href="/?display" target="_blank">타이머 전광판</a>
+        <button class="btn ghost sm" id="logout" hidden>로그아웃</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <form class="card" id="loginCard" style="max-width:420px;margin:60px auto">
+      <h3>운영자 로그인</h3>
+      <div class="field"><label for="pw">비밀번호</label><input id="pw" type="password" autocomplete="current-password" required></div>
+      <div class="err" id="loginErr"></div>
+      <button class="btn" style="width:100%">로그인</button>
+    </form>
+
+    <div id="panel" hidden>
+      <div id="matches"></div>
+
+      <form class="card" id="newMatch">
+        <h3>＋ 경기 추가</h3>
+        <div class="grid2">
+          <div class="field"><label>RED 코너 선수</label><input name="nameA" required maxlength="20"></div>
+          <div class="field"><label>WHITE 코너 선수</label><input name="nameB" required maxlength="20"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>경기 제목 (선택)</label><input name="title" maxlength="40" placeholder="예: 오늘의 메인 이벤트"></div>
+          <div class="field"><label>종목</label><input name="sport" value="킥복싱" maxlength="20"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>장소</label><input name="venue" value="인수실" maxlength="30"></div>
+          <div class="field"><label>시작 시각</label><input name="startAt" type="datetime-local" required></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>라운드 수</label><input name="rounds" type="number" min="1" max="12" value="3"></div>
+          <div class="field"><label>라운드 시간(초)</label><input name="roundSeconds" type="number" min="5" value="70"></div>
+          <div class="field"><label>휴식 시간(초)</label><input name="breakSeconds" type="number" min="0" value="30"></div>
+        </div>
+        <div class="err" id="newErr"></div>
+        <button class="btn">경기 추가</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/common.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>

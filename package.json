@@ -1,0 +1,9 @@
+{
+  "name": "fight-pick",
+  "version": "1.0.0",
+  "private": true,
+  "description": "격투 경기 승부 예측 · 응원 포인트 웹앱",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}

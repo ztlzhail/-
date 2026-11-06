@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070707">
+  <title>파이트 픽 · 승부 예측</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🥊%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="/">🥊 FIGHT <b>PICK</b></a>
+      <div id="userArea"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="feature"></section>
+
+    <div class="hide-in-display">
+      <div id="othersWrap" hidden>
+        <h3 class="section-title">경기 목록</h3>
+        <div class="other-matches" id="others"></div>
+      </div>
+
+      <h3 class="section-title">응원 포인트 랭킹</h3>
+      <div class="board" id="board"></div>
+
+      <p class="foot">
+        응원 포인트는 활동 점수입니다. 현금으로 사거나 바꾸거나 다른 사람에게 줄 수 없습니다.<br>
+        가입 시 100P · 예측 적중 +20P · 언더독 적중 시 +30P 추가<br>
+        경기는 1인 1표이며, 투표 후 변경할 수 없습니다.
+      </p>
+    </div>
+  </main>
+
+  <div class="modal" id="signupModal">
+    <form class="sheet" id="signupForm" autocomplete="off">
+      <h2>10초 가입</h2>
+      <p>닉네임과 숫자 4자리만 정하면 끝. 바로 <b style="color:var(--red-hot)">100 응원 포인트</b>를 드려요.<br>다른 기기에서는 같은 닉네임·PIN으로 들어오면 됩니다.</p>
+      <div class="field">
+        <label for="nick">닉네임</label>
+        <input id="nick" maxlength="16" placeholder="예: 인수실불주먹" required>
+      </div>
+      <div class="field">
+        <label for="pin">PIN (숫자 4자리)</label>
+        <input id="pin" inputmode="numeric" pattern="\d{4}" maxlength="4" placeholder="••••" required>
+      </div>
+      <div class="err" id="signupErr"></div>
+      <button class="btn" style="width:100%" type="submit">시작하기</button>
+      <button class="btn ghost" style="width:100%;margin-top:8px" type="button" data-close>나중에</button>
+    </form>
+  </div>
+
+  <div class="modal" id="videoModal">
+    <div class="sheet video-sheet">
+      <video id="videoEl" controls playsinline></video>
+      <button class="btn ghost" style="width:100%;margin-top:10px" type="button" data-close>닫기</button>
+    </div>
+  </div>
+
+  <script src="/common.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
