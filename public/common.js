@@ -16,18 +16,19 @@ window.FX = (() => {
 
   function now() { return Date.now() + offset; }
 
-  // 서버 실시간 상태 구독 (SSE + 끊기면 폴링 대체)
-  function subscribe(onState) {
-    let es, pollTimer;
-    const apply = s => { offset = s.serverNow - Date.now(); onState(s); };
-    const poll = async () => { try { apply(await api('/api/state')); } catch {} };
-    function connect() {
-      es = new EventSource('/api/stream');
-      es.onmessage = e => { clearInterval(pollTimer); pollTimer = null; apply(JSON.parse(e.data)); };
-      es.onerror = () => { if (!pollTimer) pollTimer = setInterval(poll, 3000); };
-    }
-    connect();
-    poll();
+  // 서버 상태 구독 (주기적 갱신 + 화면 복귀 시 즉시 갱신)
+  let onStateCb = null, inflight = false;
+  function apply(s) { offset = s.serverNow - Date.now(); if (onStateCb) onStateCb(s); }
+  async function refresh() {
+    if (inflight) return; inflight = true;
+    try { apply(await api('/api/state')); } catch (e) { if (onStateCb && e.status === 503) toast(e.message); }
+    finally { inflight = false; }
+  }
+  function subscribe(onState, ms = 2000) {
+    onStateCb = onState;
+    refresh();
+    setInterval(() => { if (!document.hidden) refresh(); }, ms);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   }
 
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -51,8 +52,18 @@ window.FX = (() => {
   }
 
   // 타이머의 현재 표시값
-  function timerView(m) {
+  function effTimer(m, at) {
     const t = m.timer;
+    if (t.status === 'running' && t.endsAt && at >= t.endsAt) {
+      if (t.round >= m.rounds) return { status: 'finished', round: t.round, endsAt: null, remainingMs: 0 };
+      const br = (m.breakSeconds || 0) * 1000;
+      if (br > 0 && at < t.endsAt + br) return { status: 'break', round: t.round, endsAt: t.endsAt + br, remainingMs: br };
+      return { status: 'roundEnd', round: t.round, endsAt: null, remainingMs: 0 };
+    }
+    return t;
+  }
+  function timerView(m) {
+    const t = effTimer(m, now());
     let remaining = t.remainingMs;
     if ((t.status === 'running' || t.status === 'break') && t.endsAt) remaining = Math.max(0, t.endsAt - now());
     const map = {
@@ -85,5 +96,5 @@ window.FX = (() => {
     try { if (val === undefined) return localStorage.getItem(key); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val); } catch { return null; }
   }
 
-  return { api, now, subscribe, mmss, untilText, timeLabel, roundLen, timerView, esc, toast, store };
+  return { api, now, subscribe, apply, refresh, effTimer, mmss, untilText, timeLabel, roundLen, timerView, esc, toast, store };
 })();

@@ -1,5 +1,6 @@
 (() => {
-  const { api, subscribe, esc, toast, store, timerView, untilText, timeLabel, roundLen, now } = FX;
+  const { api, subscribe, apply, esc, toast, store, timerView, effTimer, untilText, timeLabel, roundLen, now } = FX;
+  const isFileVideo = u => /^\/api\/media\/|\.(mp4|webm|mov|m4v)(\?|$)/i.test(u || '');
   const params = new URLSearchParams(location.search);
   if (params.has('display')) document.body.classList.add('display');
 
@@ -56,9 +57,11 @@
     if (me.votes[mid]) return toast('이미 투표했어요');
     if (!confirm(`${name} 선수에게 투표할까요?\n1인 1표, 투표 후 변경할 수 없어요.`)) return;
     try {
-      me = await api(`/api/matches/${mid}/vote`, { method: 'POST', body: { pick }, token });
+      const r = await api(`/api/matches/${mid}/vote`, { method: 'POST', body: { pick }, token });
+      me = r.me;
       toast(`${name} 선수 응원 완료! 🔥`);
-      render(true);
+      structKey = '';
+      apply(r.state);
     } catch (e) { toast(e.message); }
   }
 
@@ -67,13 +70,13 @@
     const ms = state.matches;
     if (!ms.length) return null;
     if (selectedId) { const s = ms.find(m => m.id === selectedId); if (s) return s; }
-    const live = ms.find(m => ['running', 'paused', 'break', 'roundEnd'].includes(m.timer.status) && !m.result);
+    const live = ms.find(m => ['running', 'paused', 'break', 'roundEnd'].includes(effTimer(m, now()).status) && !m.result);
     return live || ms.find(m => !m.result) || ms[ms.length - 1];
   }
 
   function media(f, side) {
     if (f.photo) return `<img src="${esc(f.photo)}" alt="${esc(f.name)} 선수">`;
-    if (f.video) return `<video src="${esc(f.video)}" muted autoplay loop playsinline></video>`;
+    if (f.video && isFileVideo(f.video)) return `<video src="${esc(f.video)}" muted autoplay loop playsinline></video>`;
     return `<div class="placeholder">${esc(f.name.slice(0, 1) || side)}</div>`;
   }
 
@@ -140,7 +143,11 @@
           </div>
         </div>`;
       feature.querySelectorAll('[data-vote]').forEach(b => b.onclick = () => vote(m.id, b.dataset.vote));
-      feature.querySelectorAll('[data-video]').forEach(b => b.onclick = () => { const v = $('#videoEl'); v.src = b.dataset.video; openModal('videoModal'); v.play().catch(() => {}); });
+      feature.querySelectorAll('[data-video]').forEach(b => b.onclick = () => {
+        const u = b.dataset.video;
+        if (!isFileVideo(u)) return window.open(u, '_blank', 'noopener');
+        const v = $('#videoEl'); v.src = u; openModal('videoModal'); v.play().catch(() => {});
+      });
     }
     updateDynamic(m);
     renderOthers(m);

@@ -1,5 +1,5 @@
 (() => {
-  const { api, subscribe, esc, toast, store, timerView, roundLen } = FX;
+  const { api, subscribe, apply, esc, toast, store, timerView, roundLen } = FX;
   const $ = s => document.querySelector(s);
   let token = store('fx_admin');
   let state = null;
@@ -40,28 +40,42 @@
   });
 
   async function adm(path, method, body) {
-    try { return await api(path, { method, body, token }); }
+    try { const r = await api(path, { method, body, token }); if (r && r.matches) apply(r); return r; }
     catch (e) { if (e.status === 401) { token = null; store('fx_admin', null); showLogin(); } throw e; }
   }
 
-  function upload(mid, slot, file, progEl) {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `/api/admin/matches/${mid}/upload?slot=${slot}`);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-      xhr.upload.onprogress = e => { if (e.lengthComputable && progEl) progEl.style.width = (e.loaded / e.total * 100) + '%'; };
-      xhr.onload = () => { let r = {}; try { r = JSON.parse(xhr.responseText); } catch {} xhr.status < 300 ? resolve(r) : reject(new Error(r.error || '업로드 실패')); };
-      xhr.onerror = () => reject(new Error('네트워크 오류'));
-      xhr.send(file);
-    });
+  const readAsDataURL = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); });
+  // 사진은 브라우저에서 줄여서 올린다 (최대 1400px, JPEG)
+  async function shrinkImage(file, max = 1400) {
+    if (file.type === 'image/gif') return readAsDataURL(file);
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let q = 0.85, out = c.toDataURL('image/jpeg', q);
+      while (out.length > 1.5e6 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      return out;
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function upload(mid, slot, file, progEl) {
+    const isVideo = slot.startsWith('video');
+    if (isVideo && file.size > 3 * 1024 * 1024) throw new Error('영상 파일은 3MB까지 올릴 수 있어요. 긴 영상은 유튜브에 올리고 링크를 넣어주세요.');
+    if (progEl) progEl.style.width = '30%';
+    const dataUrl = isVideo ? await readAsDataURL(file) : await shrinkImage(file);
+    if (progEl) progEl.style.width = '60%';
+    await adm(`/api/admin/matches/${mid}/media`, 'POST', { slot, dataUrl });
+    if (progEl) progEl.style.width = '100%';
   }
 
   function slotHtml(m, slot, label, src, isVideo) {
     return `<div class="slot">
       <b>${label}</b>
-      <div class="pv">${src ? (isVideo ? `<video src="${esc(src)}" muted controls playsinline></video>` : `<img src="${esc(src)}" alt="">`) : '없음'}</div>
+      <div class="pv">${src ? (isVideo ? (/^\/api\/media\/|\.(mp4|webm|mov|m4v)(\?|$)/i.test(src) ? `<video src="${esc(src)}" muted controls playsinline></video>` : `<a href="${esc(src)}" target="_blank" rel="noopener" style="padding:8px;word-break:break-all;font-size:12px">🔗 링크 열기</a>`) : `<img src="${esc(src)}" alt="">`) : '없음'}</div>
       <input type="file" accept="${isVideo ? 'video/mp4,video/webm,video/quicktime' : 'image/*'}" data-up="${slot}">
+      ${isVideo ? `<div style="display:flex;gap:6px"><input data-link="${slot}" placeholder="또는 유튜브 링크" style="flex:1;min-width:0;padding:7px;background:#0a0a0a;border:1px solid #333;border-radius:6px;color:#fff;font-size:12px"><button type="button" class="btn sm" data-linkbtn="${slot}">저장</button></div>` : ''}
       <div class="prog"><i></i></div>
       ${src ? `<button type="button" class="btn ghost sm" data-clear="${slot}">삭제</button>` : ''}
     </div>`;
@@ -70,7 +84,7 @@
   function matchCard(m) {
     const t = m.tally;
     const tv = timerView(m);
-    const st = m.timer.status;
+    const st = tv.status;
     const A = m.fighters.A.name, B = m.fighters.B.name;
     const nextRound = st === 'roundEnd' || st === 'break' ? Math.min(m.timer.round + 1, m.rounds) : m.timer.round;
     return `<section class="card" data-mid="${m.id}">
@@ -141,7 +155,7 @@
   let lastHtml = '';
   function render() {
     if (!state || $('#panel').hidden || busyUpload) return;
-    if (document.activeElement && document.activeElement.closest('[data-edit]')) return; // 수정 중엔 다시 그리지 않음
+    if (document.activeElement && (document.activeElement.closest('[data-edit]') || document.activeElement.matches('[data-link]'))) return; // 수정 중엔 다시 그리지 않음
     const html = state.matches.map(matchCard).join('') || '<div class="card"><p class="notice">경기가 없습니다. 아래에서 추가하세요.</p></div>';
     if (html === lastHtml) return;
     lastHtml = html;
@@ -167,7 +181,11 @@
       catch (e) { toast(e.message); }
       finally { busyUpload--; lastHtml = ''; render(); }
     });
-    card.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => run(() => adm(base + '/clearMedia', 'POST', { slot: b.dataset.clear })));
+    card.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => run(() => adm(base + '/media', 'POST', { slot: b.dataset.clear, clear: true })));
+    card.querySelectorAll('[data-linkbtn]').forEach(b => b.onclick = () => {
+      const v = card.querySelector(`[data-link="${b.dataset.linkbtn}"]`).value.trim();
+      if (v) run(() => adm(base + '/media', 'POST', { slot: b.dataset.linkbtn, url: v }), '링크를 저장했습니다');
+    });
     const det = card.querySelector('[data-details]');
     det.ontoggle = () => det.open ? openDetails.add(mid) : openDetails.delete(mid);
     const form = card.querySelector('[data-edit]');
